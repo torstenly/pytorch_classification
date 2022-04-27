@@ -27,7 +27,7 @@ args = vars(ap.parse_args())
 
 # build our data pre-processing pipeline
 testTransform = transforms.Compose([
-    transforms.CenterCrop(128),         # Resize to model source tile size
+    # transforms.CenterCrop(128),         # Resize to model source tile size
     transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
     transforms.ToTensor(),
     transforms.Normalize(mean=config.MEAN, std=config.STD)
