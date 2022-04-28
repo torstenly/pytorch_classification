@@ -16,6 +16,11 @@ import os
 import hashlib
 from tqdm import tqdm
 
+# imports for confusion matrix
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-m", "--model", required=True,
@@ -27,7 +32,7 @@ args = vars(ap.parse_args())
 
 # build our data pre-processing pipeline
 testTransform = transforms.Compose([
-    transforms.CenterCrop(128),         # Resize to model source tile size
+    # transforms.CenterCrop(128),         # Resize to model source tile size
     transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
     transforms.ToTensor(),
     transforms.Normalize(mean=config.MEAN, std=config.STD)
@@ -59,7 +64,7 @@ def inference():
     print(f'[INFO] loading the dataset from {args["image_source"]}...')
     (testDS, testLoader) = create_dataloaders.get_dataloader(args["image_source"],
         transforms=testTransform, batchSize=config.PRED_BATCH_SIZE,
-        shuffle=False)
+        shuffle=True)
 
     # read class list to model meta file
     classes = read_classes()['classes']
@@ -109,6 +114,10 @@ def inference():
     if nrows * ncols < config.PRED_LIMIT:
         ncols += 1
 
+    # keep track of ground truth and predicted values for each image
+    y_true = []
+    y_pred = []
+
     # switch off autograd
     with torch.no_grad():
         print(f"[INFO] performing inference on {len(testLoader) * config.PRED_BATCH_SIZE} images")
@@ -144,12 +153,17 @@ def inference():
                     (config.PRED_LIMIT == 0 or pred_count < config.PRED_LIMIT) and
                     predLabel not in config.PRED_EXCL_CLASSES):
 
+                    # grab the ground truth label
+                    gt_idx = labels[i].cpu().numpy()
+
+                    # if labeled data then update confusion matrix data
+                    if labeled_data:
+                        y_true.append(classes[gt_idx])
+                        y_pred.append(predLabel)
+
                     if 0 < config.PRED_LIMIT:
                         # initalize a subplot
                         plt.subplot(nrows, ncols, pred_count + 1)
-
-                        # grab the ground truth label
-                        gt_idx = labels[i].cpu().numpy()
 
                         # add the results and image to the plot
                         gtLabel = f'[GT: {classes[gt_idx]}]' if labeled_data and gt_idx != pred else ''
@@ -170,6 +184,36 @@ def inference():
     # show the plot
     plt.tight_layout()
     plt.show()
+
+    # display confusion matrix
+    if labeled_data:
+        cf_matrix = confusion_matrix(y_true, y_pred, labels=classes)
+
+        # ax = sns.heatmap(cf_matrix, annot=True, cmap='Blues')      # label with counts
+        # ax = sns.heatmap(cf_matrix/np.sum(cf_matrix), annot=True,   # label with percentages
+        #    fmt='.1%', cmap='Blues')
+
+        group_counts = ["{0:0.0f}".format(value) for value in
+                        cf_matrix.flatten()]
+        group_percentages = ["{0:.1%}".format(value) for value in
+                             cf_matrix.flatten()/np.sum(cf_matrix)]
+        labels = [f"{v1}\n{v2}" for v1, v2 in
+                  zip(group_counts,group_percentages)]
+        labels = np.asarray(labels).reshape(len(classes),len(classes))
+
+        ax = sns.heatmap(cf_matrix, annot=labels, fmt='', cmap='Blues')
+
+        ax.set_title(f'Inference: {len(y_pred)} images, (Conf > {(config.PRED_MIN_CONF*100.0):.1f}) \n\n');
+        ax.set_xlabel('\nPredicted Values')
+        ax.set_ylabel('Actual Values ');
+
+        ## Ticket labels - List must be in alphabetical order
+        ax.xaxis.set_ticklabels(classes)
+        ax.yaxis.set_ticklabels(classes)
+
+        ## Display the visualization of the Confusion Matrix.
+        plt.show()
+        plt.savefig(config.CONFUSION_MATRIX_PLOT)
 
 
 if __name__ == '__main__':

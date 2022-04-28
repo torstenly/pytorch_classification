@@ -24,8 +24,8 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 FEATURE_EXTRACTION_BATCH_SIZE = 256
 FINETUNE_BATCH_SIZE = 64
 PRED_BATCH_SIZE = 30
-PRED_LIMIT = 10         # if > 0 then stop infering tiles once this limit is reached
-PRED_MIN_CONF = 0.00    # 0 to disable min confidence threshold
+PRED_LIMIT = 30         # if > 0 then stop infering tiles once this limit is reached
+PRED_MIN_CONF = 0.40    # 0 to disable min confidence threshold
 PRED_EXCL_CLASSES = ["Undefined", "Background"]
 EPOCHS = 20
 LR = 0.001
@@ -34,6 +34,7 @@ LR_FINETUNE = 0.0005
 # define paths to store training plots and trained model
 WARMUP_PLOT = os.path.join("output", "warmup.png")
 FINETUNE_PLOT = os.path.join("output", "finetune.png")
+CONFUSION_MATRIX_PLOT = os.path.join("output", "confusion.png")
 WARMUP_MODEL = os.path.join("output", "warmup_model.pth")
 FINETUNE_MODEL = os.path.join("output", "finetune_model.pth")
 
