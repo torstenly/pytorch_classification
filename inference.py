@@ -187,33 +187,43 @@ def inference():
 
     # display confusion matrix
     if labeled_data:
+        fig = plt.figure("Confusion Matrix", figsize=(10, 10))
+
         cf_matrix = confusion_matrix(y_true, y_pred, labels=classes)
 
-        # ax = sns.heatmap(cf_matrix, annot=True, cmap='Blues')      # label with counts
-        # ax = sns.heatmap(cf_matrix/np.sum(cf_matrix), annot=True,   # label with percentages
-        #    fmt='.1%', cmap='Blues')
+        # compute precision for each class
+        # P = TP / (TP + FP)
+        precision = cf_matrix/cf_matrix.sum(axis=0)[:,None]
 
+        # compute recall for each class
+        # R = TP / (TP + FN)
+        recall = cf_matrix/cf_matrix.sum(axis=1)[:,None]
+
+        # only include precision and recall labels along matrix diagnoal
+        num_classes = len(classes)
+        diag_indx = [v * (num_classes + 1) for v in range(0, num_classes)]
         group_counts = ["{0:0.0f}".format(value) for value in
                         cf_matrix.flatten()]
-        group_percentages = ["{0:.1%}".format(value) for value in
-                             cf_matrix.flatten()/np.sum(cf_matrix)]
-        labels = [f"{v1}\n{v2}" for v1, v2 in
-                  zip(group_counts,group_percentages)]
-        labels = np.asarray(labels).reshape(len(classes),len(classes))
+        group_precision = ["" if (i not in diag_indx or np.isnan(v)) else
+                            "P: {0:.1%}".format(v) for i, v in
+                            enumerate(precision.flatten())]
+        group_recall = ["" if (i not in diag_indx or np.isnan(v)) else
+                            "R: {0:.1%}".format(v) for i,v in
+                             enumerate(recall.flatten())]
+        labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in
+                  zip(group_counts, group_precision, group_recall)]
+        labels = np.asarray(labels).reshape(num_classes,num_classes)
 
         ax = sns.heatmap(cf_matrix, annot=labels, fmt='', cmap='Blues')
-
         ax.set_title(f'Inference: {len(y_pred)} images, (Conf > {(config.PRED_MIN_CONF*100.0):.1f}) \n\n');
         ax.set_xlabel('\nPredicted Values')
         ax.set_ylabel('Actual Values ');
-
-        ## Ticket labels - List must be in alphabetical order
         ax.xaxis.set_ticklabels(classes)
         ax.yaxis.set_ticklabels(classes)
 
         ## Display the visualization of the Confusion Matrix.
-        plt.show()
         plt.savefig(config.CONFUSION_MATRIX_PLOT)
+        plt.show()
 
 
 if __name__ == '__main__':
