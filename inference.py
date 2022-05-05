@@ -182,8 +182,9 @@ def inference():
                 break
 
     # show the plot
-    plt.tight_layout()
-    plt.show()
+    if 0 < config.PRED_LIMIT and 100 >= config.PRED_LIMIT:
+        plt.tight_layout()
+        plt.show()
 
     # display confusion matrix
     if labeled_data:
